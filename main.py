@@ -2,12 +2,12 @@ import os
 from fastapi import FastAPI, Request
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Update
-import openai
+from openai import OpenAI
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -17,14 +17,19 @@ SYSTEM_PROMPT = "Sei un assistente utile, chiaro e diretto."
 
 @dp.message()
 async def handle_message(message: types.Message):
-    response = openai.ChatCompletion.create(
+    user_text = message.text or ""
+
+    # Nuova API (openai>=1.x)
+    resp = client.responses.create(
         model="gpt-4.1-mini",
-        messages=[
+        input=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": message.text}
-        ]
+            {"role": "user", "content": user_text},
+        ],
     )
-    await message.answer(response.choices[0].message.content)
+
+    reply = resp.output_text
+    await message.answer(reply)
 
 @app.post("/webhook")
 async def telegram_webhook(req: Request):
